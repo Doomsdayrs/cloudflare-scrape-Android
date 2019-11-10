@@ -11,7 +11,7 @@ Inspired by [cloudflare-scrape](https://github.com/Anorov/cloudflare-scrape).
 ```java
     Cloudflare cf = new Cloudflare(url);
     cf.setUser_agent(UA);
-    cf.getCookies(new Cloudflare.cfCallback() {
+    cf.getCookies(new Cloudflare.CloudFlareCallback() {
         @Override
         public void onSuccess(List<HttpCookie> cookieList) {
 	    something..

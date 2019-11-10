@@ -28,7 +28,7 @@ public class Cloudflare {
 
     private String mUrl;
     private String mUser_agent;
-    private cfCallback mCallback;
+    private CloudFlareCallback mCallback;
     private int mRetry_count;
     private URL ConnUrl;
     private List<HttpCookie> mCookieList;
@@ -60,7 +60,7 @@ public class Cloudflare {
         mUser_agent = user_agent;
     }
 
-    public void getCookies(final cfCallback callback){
+    public void getCookies(final CloudFlareCallback callback) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -69,27 +69,27 @@ public class Cloudflare {
         }).start();
     }
 
-    private void urlThread(cfCallback callback){
+    private void urlThread(CloudFlareCallback callback) {
         mCookieManager = new CookieManager();
         mCookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL); //接受所有cookies
         CookieHandler.setDefault(mCookieManager);
         HttpURLConnection.setFollowRedirects(false);
 
-        while (!canVisit){
-            if (mRetry_count>MAX_COUNT){
+        while (!canVisit) {
+            if (mRetry_count > MAX_COUNT) {
                 break;
             }
             try {
 
                 int responseCode = checkUrl();
-                if (responseCode==200){
-                    canVisit=true;
+                if (responseCode == 200) {
+                    canVisit = true;
                     break;
-                }else {
+                } else {
                     getVisiteCookie();
                 }
             } catch (IOException | InterruptedException e) {
-                if (mCookieList!=null){
+                if (mCookieList != null) {
                     mCookieList.clear();
                 }
                 e.printStackTrace();
@@ -98,11 +98,11 @@ public class Cloudflare {
             }
             mRetry_count++;
         }
-        if (callback!=null){
+        if (callback != null) {
             Looper.prepare();
-            if (canVisit){
+            if (canVisit) {
                 callback.onSuccess(mCookieList);
-            }else {
+            } else {
                 e("Get Cookie Failed");
                 callback.onFail();
             }
@@ -112,36 +112,35 @@ public class Cloudflare {
     }
 
 
-
     private void getVisiteCookie() throws IOException, InterruptedException {
         ConnUrl = new URL(mUrl);
         mGetMainConn = (HttpURLConnection) ConnUrl.openConnection();
         mGetMainConn.setRequestMethod("GET");
         mGetMainConn.setConnectTimeout(CONN_TIMEOUT);
         mGetMainConn.setReadTimeout(CONN_TIMEOUT);
-        if (!TextUtils.isEmpty(mUser_agent)){
-            mGetMainConn.setRequestProperty("user-agent",mUser_agent);
+        if (!TextUtils.isEmpty(mUser_agent)) {
+            mGetMainConn.setRequestProperty("user-agent", mUser_agent);
         }
-        mGetMainConn.setRequestProperty("accept",ACCEPT);
+        mGetMainConn.setRequestProperty("accept", ACCEPT);
         mGetMainConn.setRequestProperty("referer", mUrl);
-        if (mCookieList!=null&&mCookieList.size()>0){
-            mGetMainConn.setRequestProperty("cookie",listToString(mCookieList));
+        if (mCookieList != null && mCookieList.size() > 0) {
+            mGetMainConn.setRequestProperty("cookie", listToString(mCookieList));
         }
         mGetMainConn.setUseCaches(false);
         mGetMainConn.connect();
-        switch (mGetMainConn.getResponseCode()){
+        switch (mGetMainConn.getResponseCode()) {
             case HttpURLConnection.HTTP_OK:
-                e("MainUrl","visit website success");
+                e("MainUrl", "visit website success");
                 return;
             case HttpURLConnection.HTTP_FORBIDDEN:
-                e("MainUrl","IP block or cookie err");
+                e("MainUrl", "IP block or cookie err");
                 return;
             case HttpURLConnection.HTTP_UNAVAILABLE:
                 InputStream mInputStream = mCheckConn.getErrorStream();
                 BufferedReader mBufferedReader = new BufferedReader(new InputStreamReader(mInputStream));
                 StringBuilder sb = new StringBuilder();
                 String str;
-                while ((str = mBufferedReader.readLine()) != null){
+                while ((str = mBufferedReader.readLine()) != null) {
                     sb.append(str);
                 }
                 mInputStream.close();
@@ -158,22 +157,23 @@ public class Cloudflare {
 
     /**
      * 获取值并跳转获得cookies
+     *
      * @param str
      */
     private void getCheckAnswer(String str) throws InterruptedException, IOException {
-        String s = regex(str,"name=\"s\" value=\"(.+?)\"").get(0);   //正则取值
-        String jschl_vc = regex(str,"name=\"jschl_vc\" value=\"(.+?)\"").get(0);
-        String pass = regex(str,"name=\"pass\" value=\"(.+?)\"").get(0);            //
+        String s = regex(str, "name=\"s\" value=\"(.+?)\"").get(0);   //正则取值
+        String jschl_vc = regex(str, "name=\"jschl_vc\" value=\"(.+?)\"").get(0);
+        String pass = regex(str, "name=\"pass\" value=\"(.+?)\"").get(0);            //
         double jschl_answer = get_answer(str);
         e(String.valueOf(jschl_answer));
         Thread.sleep(3000);
-        String req = String.valueOf("https://"+ConnUrl.getHost())+"/cdn-cgi/l/chk_jschl?";
-        if (!TextUtils.isEmpty(s)){
+        String req = String.valueOf("https://" + ConnUrl.getHost()) + "/cdn-cgi/l/chk_jschl?";
+        if (!TextUtils.isEmpty(s)) {
             s = Uri.encode(s);
-            req+="s="+s+"&";
+            req += "s=" + s + "&";
         }
-        req+="jschl_vc="+Uri.encode(jschl_vc)+"&pass="+Uri.encode(pass)+"&jschl_answer="+jschl_answer;
-        e("RedirectUrl",req);
+        req += "jschl_vc=" + Uri.encode(jschl_vc) + "&pass=" + Uri.encode(pass) + "&jschl_answer=" + jschl_answer;
+        e("RedirectUrl", req);
         getRedirectResponse(req);
     }
 
@@ -183,107 +183,102 @@ public class Cloudflare {
         mGetRedirectionConn.setRequestMethod("GET");
         mGetRedirectionConn.setConnectTimeout(CONN_TIMEOUT);
         mGetRedirectionConn.setReadTimeout(CONN_TIMEOUT);
-        if (!TextUtils.isEmpty(mUser_agent)){
-            mGetRedirectionConn.setRequestProperty("user-agent",mUser_agent);
+        if (!TextUtils.isEmpty(mUser_agent)) {
+            mGetRedirectionConn.setRequestProperty("user-agent", mUser_agent);
         }
-        mGetRedirectionConn.setRequestProperty("accept",ACCEPT);
+        mGetRedirectionConn.setRequestProperty("accept", ACCEPT);
         mGetRedirectionConn.setRequestProperty("referer", req);
-        if (mCookieList!=null&&mCookieList.size()>0){
-            mGetRedirectionConn.setRequestProperty("cookie",listToString(mCookieList));
+        if (mCookieList != null && mCookieList.size() > 0) {
+            mGetRedirectionConn.setRequestProperty("cookie", listToString(mCookieList));
         }
         mGetRedirectionConn.setUseCaches(false);
         mGetRedirectionConn.connect();
-        switch (mGetRedirectionConn.getResponseCode()){
+        switch (mGetRedirectionConn.getResponseCode()) {
             case HttpURLConnection.HTTP_OK:
                 mCookieList = mCookieManager.getCookieStore().getCookies();
                 break;
             case HttpURLConnection.HTTP_MOVED_TEMP:
                 mCookieList = mCookieManager.getCookieStore().getCookies();
                 break;
-            default:throw new IOException("getOtherResponse Code: "+
-                    mGetRedirectionConn.getResponseCode());
+            default:
+                throw new IOException("getOtherResponse Code: " +
+                        mGetRedirectionConn.getResponseCode());
         }
     }
 
 
-    private int checkUrl()throws IOException {
+    private int checkUrl() throws IOException {
         URL ConnUrl = new URL(mUrl);
         mCheckConn = (HttpURLConnection) ConnUrl.openConnection();
         mCheckConn.setRequestMethod("GET");
         mCheckConn.setConnectTimeout(CONN_TIMEOUT);
         mCheckConn.setReadTimeout(CONN_TIMEOUT);
-        if (!TextUtils.isEmpty(mUser_agent)){
-            mCheckConn.setRequestProperty("user-agent",mUser_agent);
+        if (!TextUtils.isEmpty(mUser_agent)) {
+            mCheckConn.setRequestProperty("user-agent", mUser_agent);
         }
-        mCheckConn.setRequestProperty("accept",ACCEPT);
-        mCheckConn.setRequestProperty("referer",mUrl);
-        if (mCookieList!=null&&mCookieList.size()>0){
-            mCheckConn.setRequestProperty("cookie",listToString(mCookieList));
+        mCheckConn.setRequestProperty("accept", ACCEPT);
+        mCheckConn.setRequestProperty("referer", mUrl);
+        if (mCookieList != null && mCookieList.size() > 0) {
+            mCheckConn.setRequestProperty("cookie", listToString(mCookieList));
         }
         mCheckConn.setUseCaches(false);
         mCheckConn.connect();
         return mCheckConn.getResponseCode();
     }
 
-    private void closeAllConn(){
-        if (mCheckConn!=null){
+    private void closeAllConn() {
+        if (mCheckConn != null) {
             mCheckConn.disconnect();
         }
-        if (mGetMainConn!=null){
+        if (mGetMainConn != null) {
             mGetMainConn.disconnect();
         }
-        if (mGetRedirectionConn!=null){
+        if (mGetRedirectionConn != null) {
             mGetRedirectionConn.disconnect();
         }
     }
 
 
-    public interface cfCallback{
-        void onSuccess(List<HttpCookie> cookieList);
-        void onFail();
-    }
-
     private double get_answer(String str) {  //取值
         double a = 0;
 
         try {
-            List<String> s = regex(str,"var s,t,o,p,b,r,e,a,k,i,n,g,f, " +
+            List<String> s = regex(str, "var s,t,o,p,b,r,e,a,k,i,n,g,f, " +
                     "(.+?)=\\{\"(.+?)\"");
             String varA = s.get(0);
             String varB = s.get(1);
             StringBuilder sb = new StringBuilder();
             sb.append("var t=\"").append(new URL(mUrl).getHost()).append("\";");
             sb.append("var a=");
-            sb.append(regex(str,varA+"=\\{\""+varB+"\":(.+?)\\}").get(0));
+            sb.append(regex(str, varA + "=\\{\"" + varB + "\":(.+?)\\}").get(0));
             sb.append(";");
-            List<String> b = regex(str,varA+"\\."+varB+"(.+?)\\;");
-            for (int i =0;i<b.size()-1;i++){
+            List<String> b = regex(str, varA + "\\." + varB + "(.+?)\\;");
+            for (int i = 0; i < b.size() - 1; i++) {
                 sb.append("a");
                 sb.append(b.get(i));
                 sb.append(";");
             }
 
-            e("add",sb.toString());
+            e("add", sb.toString());
             Context rhino = Context.enter();
             rhino.setOptimizationLevel(-1);
-            try{
+            try {
                 Scriptable scope = rhino.initStandardObjects();
-                a= Double.parseDouble(rhino.evaluateString(scope, sb.toString(), "JavaScript", 1, null).toString());
-                List<String> fixNum = regex(str,"toFixed\\((.+?)\\)");
-                if (fixNum!=null){
-                    String script="String("+ String.valueOf(a)+".toFixed("+fixNum.get(0)+"));";
+                a = Double.parseDouble(rhino.evaluateString(scope, sb.toString(), "JavaScript", 1, null).toString());
+                List<String> fixNum = regex(str, "toFixed\\((.+?)\\)");
+                if (fixNum != null) {
+                    String script = "String(" + String.valueOf(a) + ".toFixed(" + fixNum.get(0) + "));";
                     a = Double.parseDouble(rhino.evaluateString(scope, script, "JavaScript", 1, null).toString());
                 }
                 a += new URL(mUrl).getHost().length();
 
-            }finally {
+            } finally {
                 Context.exit();
             }
-        }catch (IndexOutOfBoundsException e){
-            e("answerErr","get answer error");
+        } catch (IndexOutOfBoundsException e) {
+            e("answerErr", "get answer error");
             e.printStackTrace();
-        }
-        catch (MalformedURLException e) {
+        } catch (MalformedURLException e) {
             e.printStackTrace();
         }
         return a;
@@ -291,11 +286,12 @@ public class Cloudflare {
 
     /**
      * 正则
-     * @param text 本体
+     *
+     * @param text    本体
      * @param pattern 正则式
      * @return List<String>
      */
-    private List<String> regex(String text, String pattern){
+    private List<String> regex(String text, String pattern) {
         try {
             Pattern pt = Pattern.compile(pattern);
             Matcher mt = pt.matcher(text);
@@ -303,25 +299,26 @@ public class Cloudflare {
 
             while (mt.find()) {
                 if (mt.groupCount() >= 1) {
-                    if (mt.groupCount()>1){
+                    if (mt.groupCount() > 1) {
                         group.add(mt.group(1));
                         group.add(mt.group(2));
-                    }else group.add(mt.group(1));
+                    } else group.add(mt.group(1));
                 }
             }
             return group;
-        }catch (NullPointerException e){
-            Log.i("MATCH","null");
+        } catch (NullPointerException e) {
+            Log.i("MATCH", "null");
         }
         return null;
     }
 
     /**
      * 转换list为 ; 符号链接的字符串
+     *
      * @param list
      * @return
      */
-    public static String listToString(List list ) {
+    public static String listToString(List list) {
         char separator = ";".charAt(0);
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < list.size(); i++) {
@@ -333,10 +330,11 @@ public class Cloudflare {
 
     /**
      * 转换为jsoup可用的Hashmap
-     * @param list  HttpCookie列表
+     *
+     * @param list HttpCookie列表
      * @return Hashmap
      */
-    public static Map<String,String> List2Map(List<HttpCookie> list){
+    public static Map<String, String> List2Map(List<HttpCookie> list) {
         Map<String, String> map = new HashMap<>();
         try {
             if (list != null) {
@@ -356,12 +354,12 @@ public class Cloudflare {
         return map;
     }
 
-    private void e(String tag,String content){
-        Log.e(tag,content);
+    private void e(String tag, String content) {
+        Log.e(tag, content);
     }
 
-    private void e(String content){
-        Log.e("cloudflare",content);
+    private void e(String content) {
+        Log.e("cloudflare", content);
     }
 
 }
