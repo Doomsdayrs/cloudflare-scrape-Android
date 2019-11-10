@@ -1,3 +1,4 @@
+package com.zhkrb.www.dmmagnet.aria2;
 import android.net.Uri;
 import android.os.Looper;
 import android.text.TextUtils;
