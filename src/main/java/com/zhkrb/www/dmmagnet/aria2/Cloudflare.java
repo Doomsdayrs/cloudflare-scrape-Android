@@ -271,8 +271,9 @@ public class Cloudflare {
                     String script = "String(" + String.valueOf(a) + ".toFixed(" + fixNum.get(0) + "));";
                     a = Double.parseDouble(rhino.evaluateString(scope, script, "JavaScript", 1, null).toString());
                 }
-                a += new URL(mUrl).getHost().length();
-
+                if (b != null && b.get(b.size()-1).contains("t.length")){
+                    a += new URL(mUrl).getHost().length();
+                }
             } finally {
                 Context.exit();
             }
